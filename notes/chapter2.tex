@@ -1,1 +1,52 @@
 \section{What is a socket?}
+A \emph{socket} is a way to speak to other programs using standard Unix file descriptors. Recall that everything in Unix is a file. All I/O is done by reading and writing to a file descriptor, an integer associated with an open file. The file, however, can be many things: a network connection, a FIFO, a pipe, a terminal, etc. If we want to communicate with another program over the Internet, we'll do it via a file descriptor.We get, read, and write sockets using the \cpp{socket()}, \cpp{send()}, and \cpp{recv()} system calls. 
+
+There are many different kinds of sockets. This book will deal with DARPA Internet sockets. 
+
+\subsection{Two Types of Internet Sockets}
+There are two types of sockets: ``Stream Sockets'' and ``Datagram Sockets'', also known as \cpp{SOCK_STREAM} and \cpp{SOCK_DGRAM} respectively. 
+
+\paragraph{Stream sockets}
+Stream sockets are reliable two-way connected communication streams. The order of sent messages are maintained and the messaging is guaranteed to be error-free.
+
+Applications such as telnet and the HTTP protocol use stream sockets.
+
+Stream sockets use the Transmission Control Protocol, TCP, to guarantee their reliability. 
+
+\paragraph{Datagram sockets}
+Datagram sockets are unreliable and connectionless. If you send a message it may not arrive and it may not arrive in the correct order. The only guarantee is that if the message does arrive, the data inside will be error-free.
+
+Datagram sockets are connectionless because unlike stream sockets, you don't have to maintain an open connection. They are typically used in applications where dropping a few packets here and there is not important. 
+
+tftp, dhcpcd, multiplayer games, audio streaming, and video conferencing, all can use datagram sockets. Some applications like tftp and dhcpcd need additional protocols on top of UDP to ensure the packets make it, but other applications like gaming will simply ignore dropped packets (e.g. lag).
+
+You would use and unreliable protocol like UDP for speed!
+
+\subsection{Low level Nonsense and Network Theory}
+Data encapsulation is how networking works. Essentially, data is wrapped in various headers and sent out, such as in \figref{data-encapsulation}. When the packet is received, hardware will strip the ethernet header. The kernel will strip the IP and UDP headers. A TFTP program will stip the TFTP header and manipulate the unencapsulated data. 
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\linewidth]{\imgpath{data-encapsulation}}
+\caption{Data Encapsulation}
+\label{fig:data-encapsulation}
+\end{figure}
+
+Such encapsulation is used in the \emph{Layered Network Model}.
+\begin{itemize}
+  \item Application
+  \item Presentation
+  \item Session
+  \item Transport
+  \item Network
+  \item Data Link
+  \item Physical
+\end{itemize}
+
+A model more consistent with Unix might be:
+\begin{itemize}
+  \item Application Layer (telnet, ftp, etc.)
+  \item Host-to-Host Transport Layer (TCP, UDP)
+  \item Internet Layer (IP and routing)
+  \item Network Access Layer (Ethernet, wi-fi, etc.)
+\end{itemize}
