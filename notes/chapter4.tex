@@ -1,1 +1,16 @@
 \section{Jumping from IPv4 to IPv6}
+A brief list of methods to switch from IPv4 to IPv6.
+\begin{enumerate}
+  \item Use \cpp{getaddrinfo()}.
+  \item Wrap all references to IP version in helper functions.
+  \item Change \cpp{AF_INET} to \cpp{AF_INET6}.
+  \item Change \cpp{PF_INET} to \cpp{PF_INET6}.
+  \item Change \cpp{INADDR_ANY} to \cpp{in6addr_any}.
+  \item Use \cpp{sockaddr_in6} instead of \cpp{sockaddr_in}.
+  \item Use \cpp{in6_addr} instead of \cpp{in_addr}.
+  \item Use \cpp{inet_pton()} not \cpp{inet_aton()} or \cpp{inet_addr()}.
+  \item Use \cpp{inet_ntop()} not \cpp{inet_ntoa()}.
+  \item Use \cpp{getaddrinfo()} not \cpp{gethostbyname()}.
+  \item Use \cpp{getnameinfo()} not \cpp{gethostbyaddr()}.
+  \item Don't use \cpp{INADDR_BROADCAST}
+\end{enumerate}
