@@ -1,1 +1,94 @@
 \section{IP Adresses, \cpp{structs}, and Data Munging}
+This section discusses IP addresses and ports as well as how the sockets API stores and manipulates IP addresses and other data.
+
+\subsection{IP Addresses, versions 4 and 6}
+Back when the Internet was originally created, we used IPv4. IP addresses were 32 bits (4 octets) and represented with ``dots and numbers'' as in \cpp{192.0.2.111}. However, as the number of required IP addresses grew, we ran out of IP addresses. 
+
+Enter IPv6. IPv6 addresses are 16 octets long and represented with colons and hexadecimal, as in \cpp{2001:odb8:c9d2:aee5:73e3:934a:a5ae:9551}. To compress IPv6 addresses, you can replace zeros with to colons. You can also leave off leading zeros in each byte pair. All of the pairs of IP addresses in \listref{ip-address-pairs} are identical.
+
+\begin{CPP}[label=list:ip-address-pairs,caption=Identical IP Addresses]
+2001:0db8:c9d2:0012:0000:0000:0000:0051
+2001:db8:c9d2:12::51
+
+2001:0db8:ab00:0000:0000:0000:0000:0000
+2001:db8:ab00::
+
+0000:0000:0000:0000:0000:0000:0000:0001
+::1
+\end{CPP}
+
+\cpp{::1} is the \emph{loopback address} which is \cpp{127.0.0.1} in IPv4. IPv4 addresses can also be represented in IPv6. \cpp{192.0.2.33} translates to \cpp{::ffff:192.0.2.33}.
+
+\subsubsection{Subnets}
+For organizational purposes, it is convenient to label the first part of an IP address as the \emph{network portion} of the address and the remaining part as the \emph{host portion}. For example, consider the address \cpp{192.0.2.12}. The first three bytes could be the network and the last byte could be the host. That is, host \cpp{12} on network \cpp{192.0.2.0}.
+
+In early versions of the Internet, there were different ``classes'' of subnets. Class A subnets had 1 byte of network. Class B subnets had 2 bytes of network. Class C subnets had 3 bytes of network. Eventually this scheme was deprecated and replaced with arbitrary length network portions. 
+
+The network portion of an address is described by a \emph{netmask}, a set of bits you bitwise-AND the address with. For example, the netmask \cpp{255.255.255.0} yields three bytes of network. This scheme can also be expressed as an address followed by a forward slash followed by the number of bits in the network portion of the address. For example, \cpp{192.0.2.12/30} or \cpp{2001:db8::/32}.
+
+\subsubsection{Port Numbers}
+How do you multiplex different TCP or UDP applications on a computer with a single IP address? You use port numbers, a 16-bit number. Think of IP addresses as hotel addresses and port numbers as room numbers. Different applications run on different port numbers. HTTP runs on port 80, telnet on port 23, DOOM on port 666, etc.
+
+\subsection{Byte Order}
+Pretend you want to store the bytes \cpp{b34f} in your computer. Your computer can store them as \cpp{b3} then \cpp{4f}. This method, with the big end first, is known as \emph{Big-Endian}. Other computers may store the bytes as \cpp{4f} then \cpp{b3} in a method known as \emph{Little-Endian}.
+
+\emph{Network Byte Order} is synonymous with Big-Endian, and is the byte ordering sent across the network. \emph{Host Byte Order} is the byte ordering of your computer. To convert to and from host and network ordering, we use 4 functions.
+\begin{itemize}
+  \item \cpp{htons} host to network short
+  \item \cpp{htonl} host to network long
+  \item \cpp{ntohs} network to host short
+  \item \cpp{ntohl} network to host long
+\end{itemize}
+
+\subsection{structs}
+Refer to \listref{addrinfo}, \listref{sockaddr}, \listref{sockaddr-in}, \listref{in-addr}, \listref{sockaddr-in6}, \listref{in6-addr}, and \listref{sockaddr-storage}.
+
+
+A socket descriptor is of type \cpp{int}.
+
+A \cpp{addrinfo} struct is one of the first structs you'll interact with. It contains information about an address. 
+
+\inputcpp[label=list:addrinfo,caption=addrinfo struct]{\listing{addrinfo.c}}
+
+\cpp{sockaddr} contains a socket address. Dealing with the \cpp{sa_data} by hand is cumbersome. Instead, you can use \cpp{sockaddr_in} or \cpp{sockaddr_in6}. A pointer to a \cpp{sockaddr_in} can be cast to a pointer of \cpp{sockaddr} and vice-versa.
+\inputcpp[label=list:sockaddr,caption=sockaddr struct]{\listing{sockaddr.c}}
+\inputcpp[label=list:sockaddr-in,caption=sockaddr-in struct]{\listing{sockaddr_in.c}}
+\inputcpp[label=list:in-addr,caption=in-addr struct]{\listing{in_addr.c}}
+\inputcpp[label=list:sockaddr-in6,caption=sockaddr-in6 struct]{\listing{sockaddr_in6.c}}
+\inputcpp[label=list:in6-addr,caption=in6-addr struct]{\listing{in6_addr.c}}
+
+\cpp{sockaddr_storage} is a struct large enough to hold both IPv4 and IPv6 structures.
+\inputcpp[label=list:sockaddr-storage,caption=sockaddr-storage struct]{\listing{sockaddr_storage.c}}
+
+\subsection{IP Addresses, Part Deux}
+Fortunately, there are many functions to help manipulate IP addresses. 
+
+If you want to convert a string representation of an IP address into a representation suitable for a struct, use \cpp{inet_pton()}. \cpp{pton} stands for ``presentation to network'' or ``printable to network''. An example use is given in \listref{inet-pton}. \cpp{inet_pton} returns -1 on error and 0 if the address is messed up.
+
+\begin{CPP}[label=list:inet-pton,caption=Presentation to Network]
+struct sockaddr_in  sa;  // IPv4
+struct sockaddr_in6 sa6; // IPv6
+
+inet_pton(AF_INET, "192.0.2.1", &(sa.sin_addr));
+inet_pton(AF_INET6, "2001:db8:63b3:1::3490", &(sa6.sin6_addr));
+\end{CPP}
+
+The opposite conversion can be made using \cpp{inet_ntop()}, as shown in \listref{inet-ntop}.
+
+\begin{CPP}[label=list:inet-ntop,caption=Network to Presentation]
+char ip4[INET_ADDRSTRLEN];
+struct sockaddr_in sa;
+inet_ntop(AF_INET, &(sa.sin_addr), ip4, INET_ADDRSTRLEN);
+printf("The IPv4 address is: %s\n", ip4);
+
+char ip6[INET6_ADDRSTRLEN];
+struct sockaddr_in6 sa6;
+inet_ntop(AF_INET6, &(sa6.sin6_addr), ip6, INET6_ADDRSTRLEN);
+printf("The address is: %s\n", ip6);
+\end{CPP}
+
+\subsubsection{Private (Or Disconnected) Networks}
+Many networks are hidden behind a firewall that translates internal IP addresses to external IP addresses. This is done via a process known as NAT, or \emph{Network Address Translation}.
+
+Your public IP may be \cpp{192.0.2.33}, but your computer will say \cpp{10.x.x.x} or \cpp{192.168.x.x}.
+
