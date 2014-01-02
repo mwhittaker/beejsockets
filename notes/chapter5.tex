@@ -1,1 +1,109 @@
 \section{System Calls or Bust}
+System calls allow us to access network functionality. When we invoke these functions, the kernel takes over and performs the service. The system calls are outlined in roughly the same order in which we will need to call them.
+
+\subsection{getaddrinfo() -- Prepare to launch!}
+This function helps set up \cpp{struct}s that we will use later on. \listref{getaddrinfo-1} shows the code we would write if we are a server and want to listen on our host's IP address, port 3490. The code doesn't actually do any listening or network setup, but it does setup the structures we'll need later. 
+
+\cpp{AI_PASSIVE} tells \cpp{getaddrinfo()} to assign the address of my local host to the socket structures.
+
+\inputcpp[label=list:getaddrinfo-1,caption=\cpp{getaddrinfo()} on local host port 3490]{\listing{getaddrinfo_1.cpp}}
+
+If we are a client wanting to connect to google.com, we would use \listref{getaddrinfo-2}.
+
+\inputcpp[label=list:getaddrinfo-2,caption=\cpp{getaddrinfo()} on google port 80]{\listing{getaddrinfo_2.cpp}}
+
+A more advanced example of \cpp{getaddrinfo} is shown in \listref{showip}.
+
+\inputcpp[label=list:showip,caption=showip commanline utility]{\listing{showip.cpp}}
+
+\subsection{socket() -- Get the File Descriptor!}
+The \cpp{socket()} system call takes three arguments: domain, type, protocol. domain is \cpp{PF_INET} or \cpp{PF_INET6}. type is \cpp{SOCK_STREAM} or \cpp{SOCK_DGRAM} and protocol is 0 to choose the proper protocol from the type. 
+
+You used to pack these by hand, which you can still do, but it's better to use the structs formed from \cpp{getaddrinfo}, as shown in \listref{socket-example}. \cpp{socket()} returns a \emph{socket descriptor} or -1 on error. It also sets \cpp{errno} on error. 
+
+\inputcpp[label=list:socket-example,caption=Example socket use]{\listing{socket_example.cpp}}
+
+\subsection{bind() -- What port am I on?}
+Once you have a socket, you might have to associate it with a certain port; for example, if you are going to \cpp{listen()}. If you're a client and are only going to \cpp{connect()}, you may not need to \cpp{bind()}. Also make sure not to bind to any ports under 1024. An example bind is given in \listref{bind-example}.
+
+\inputcpp[label=list:bind=example,caption=Example bind]{\listing{bind_example.cpp}}
+
+\subsection{connect() -- Hey, you!}
+Connecting is similar to binding and shown in \listref{connect-example.cpp}. Notice that we didn't bind because we only care about the server's port number.
+
+\inputcpp[label=list:connect-example,caption=Example connect]{\listing{connect_example.cpp}}
+
+\subsection{listen() -- Will somebody please call me?}
+If we are a server and want to wait for incoming connections and handle them in some way, we will need to \cpp{listen()} and then \cpp{accept()}. We can \cpp{listen()} as shown in \listref{listen}
+
+\begin{CPP}[label=list:listen,caption=listen API]
+int listen(int sockfd, int backlog);
+\end{CPP}
+
+\cpp{sockfd} is the usual socket file descriptor. \cpp{backlog} is the number of connections allowed on the incoming queue. When other nodes connect to our port, they are arranged in a queue until we \cpp{accept()} them. \cpp{backlog} tells us how many we allow on the queue at any one time. We can set this value usually anywhere from 5-20.
+
+An example of \cpp{listen()} is deferred to the section on \cpp{accept()}.
+
+\subsection{accept() -- Thank you for calling port 3490}
+When other nodes connect to our port, they are queued as we listen. We must \cpp{accept} the nodes to handle them. \cpp{accept} returns a new socket file descriptor that is ready to \cpp{send()} and \cpp{recv()}. An example accept is shown in \listref{accept-example}.
+
+\inputcpp[label=list:accept-example,caption=Example accept]{\listing{accept_example.cpp}} 
+
+\subsection{send() and recv() -- Talk to me, baby!}
+These two functions are used to communicate over stream sockets or connected datagram sockets.
+
+The \cpp{send()} API is given in \listref{send-api}. \cpp{sockfd} is the socket descriptor you want to send data to. \cpp{msg} is a pointer to the data we want to send. \cpp{len} is the length od the data. \cpp{flags} can be set to 0 for now.
+
+\cpp{send()} returns the actual number of bytes sent. It is our responsibility to send any unsent data. -1 is returned and \cpp{errno} is set on error.
+
+\begin{CPP}[label=list:send-api,caption=send API]
+int send(int sockfd, const void *msg, int len, int flags);
+\end{CPP}
+
+The \cpp{recv()} API is given in \listref{recv-api}. \cpp{sockfd} is the socket descriptor to read from. \cpp{buf} is the buffer to read the information into. \cpp{len} is the maximum length of the buffer. \cpp{flags} can be set to 0.
+
+\cpp{recv()} returns the actual number of bytes read into the buffer. \cpp{recv()} returns 0 if the remote side has closed a connection. -1 is returned and \cpp{errno} is set upon error.
+
+\begin{CPP}[label=list:recv-api,caption=recv API]
+int recv(int sockfd, void *buf, int len, int flags);
+\end{CPP}
+
+An example of send and receive is delayed until the chapter on the client-server model.
+
+\subsection{sendto() and recvfrom() -- Talk to me, DGRAM-style}
+If you want to send data across unconnected datagram sockets, you need to use \cpp{sendto()} and \cpp{recvfrom()}. Their API is similar to \cpp{send()} and \cpp{recv()} and is shown in \listref{sendto-api} and \listref{recvfrom-api}.
+
+\begin{CPP}[label=list:sendto-api,caption=sendto API]
+int sendto(int sockfd, const void *msg, int len, unsigned int flags,
+        const struct sockaddr *to, socklen_t tolen);
+\end{CPP}
+
+\begin{CPP}[label=list:recvfrom-api,caption=recvfrom API]
+int recvfrom(int sockfd, void *buf, int len, unsigned int flags,
+        struct sockaddr *from, int *fromlen);
+\end{CPP}
+
+\subsection{close() and shutdown() -- Get outta my face!}
+If you want to close a file, simply call \cpp{close()}, as shown in \listref{close-api}. If you want more control over how the socket is shut down, you can use \cpp{shutdown()}, as shown in \listref{shutdown-api}. \cpp{how} is one of the following.
+\begin{itemize}
+  \item \cpp{0} Further receives are disallowed
+  \item \cpp{1} Further sends are disallowed
+  \item \cpp{2} Further sends and receives are disallowed 
+\end{itemize}
+
+Note that \cpp{shutdown()} doesn't actually close the file descriptor. For that, you still need to use \cpp{close()}.
+
+\begin{CPP}[label=list:close-api,caption=close API]
+close(sockfd);
+\end{CPP}
+
+\begin{CPP}[label=list:shutdown-api,caption=shutdown API]
+int shutdown(int sockfd, int how);
+\end{CPP}
+
+\subsection{getpeername() -- Who are you?}
+\cpp{getpeername()} will tell you who is at the other end of a connected stream socket. 
+
+\subsection{gethostname() -- Who am I?}
+\cpp{gethostname()} gets the name of the computer being run on.
+
