@@ -2,15 +2,13 @@ CXX      = g++
 RM       = rm
 CPPFLAGS = -Wall -Wextra -Werror -g -O2 -Wall -pedantic -std=c++11 -pthread
 SRCS     = $(wildcard *.cpp) 
-HEADERS  = $(wildcard *.h) 
+INC      = -I../src -I/home/michael/CS/git/modular-boost
+LINK     = -L/home/michael/CS/git/modular-boost/stage/lib
 
 all: $(SRCS:.cpp=)
 
-.cpp:
-	$(CXX) -c $(CPPFLAGS) $< 
-
-.o:
-	@#
+.cpp: 
+	$(CXX) $(CPPFLAGS) $(INC) $< -o $@.out
 
 clean:
-	-$(RM) *.o
+	$(RM) *.out

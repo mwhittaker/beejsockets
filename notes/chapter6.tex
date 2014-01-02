@@ -1,1 +1,10 @@
 \section{Client-Server Background}
+In this chapter, we cover the ubiquitous client-server model. In many applications, many clients will connect to a single server. For example, firefox connects to Apache.
+
+We will write a very simple stream socket server and client to send a simple ``Hello, world!'' message.
+
+\subsection{A Simple Stream Server}
+\inputcpp[label=list:stream-server,caption=A simple stream server]{\src{stream-server.cpp}}
+
+\subsection{A Simple Stream Client}
+\inputcpp[label=list:stream-client,caption=A simple stream client]{\src{stream-client.cpp}}
